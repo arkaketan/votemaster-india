@@ -67,7 +67,7 @@ DATA & REFRESH BEHAVIOUR
   • "● LIVE" badge appears when live data is loaded
 
 ─────────────────────────────────────────────────────────
-EY ELECTIONS TRACKED (2026)
+KEY ELECTIONS TRACKED (2026)
 ─────────────────────────────────────────────────────────
   State         Polling Date     Seats   Counting
   ─────────────────────────────────────────────────

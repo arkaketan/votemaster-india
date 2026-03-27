@@ -1,0 +1,1722 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>🗳️ India Election Monitor 2026</title>
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <style>
+  /* ── Reset ─────────────────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #0d1117;
+    --surface:   #161b22;
+    --surface2:  #1c2330;
+    --border:    #30363d;
+    --text:      #e6edf3;
+    --muted:     #8b949e;
+    --saffron:   #FF9933;
+    --green:     #138808;
+    --radius:    8px;
+    --font:      'Segoe UI', system-ui, -apple-system, sans-serif;
+  }
+
+  html, body { min-height: 100%; background: var(--bg); color: var(--text);
+    font-family: var(--font); font-size: 15px; line-height: 1.5;
+    overflow-y: auto; }
+
+  /* ── App shell ──────────────────────────────────────────────────── */
+  #app { display: flex; flex-direction: column; min-height: 100vh; }
+
+  /* ── Header ─────────────────────────────────────────────────────── */
+  #header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 22px;
+    background: var(--surface);
+    border-bottom: 2px solid transparent;
+    border-image: linear-gradient(90deg,var(--saffron),#fff,var(--green)) 1;
+    flex-shrink: 0;
+    position: sticky; top: 0; z-index: 200;
+  }
+  #header .title { display: flex; align-items: center; gap: 14px; }
+  #header .flag  { font-size: 32px; }
+  #header h1     { font-size: 20px; font-weight: 700; }
+  #header .sub   { font-size: 12px; color: var(--muted); }
+  #header .ctrl  { display: flex; align-items: center; gap: 12px; }
+  #last-upd      { font-size: 12px; color: var(--muted); }
+
+  /* ── Buttons ────────────────────────────────────────────────────── */
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 16px; border-radius: var(--radius);
+    border: 1px solid var(--border); background: var(--surface2);
+    color: var(--text); font-size: 13px; font-weight: 500; cursor: pointer;
+    transition: background .15s, border-color .15s;
+  }
+  .btn:hover { background: #2d3748; border-color: #4a5568; }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .btn.primary { background: #1a3a5c; border-color: #2563eb; color: #93c5fd; }
+  .btn.primary:hover { background: #1e4d80; }
+  .btn.sm { padding: 4px 10px; font-size: 12px; }
+  .spin { animation: spin 1s linear infinite; display: inline-block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Tab bar ────────────────────────────────────────────────────── */
+  #tab-bar {
+    display: flex; align-items: stretch;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    position: sticky; top: 57px; z-index: 199;
+  }
+  .tab {
+    padding: 10px 22px; font-size: 14px; font-weight: 500;
+    cursor: pointer; color: var(--muted);
+    border-bottom: 3px solid transparent;
+    transition: color .15s, border-color .15s;
+    white-space: nowrap;
+  }
+  .tab:hover  { color: var(--text); }
+  .tab.active { color: var(--text); border-bottom-color: var(--saffron); }
+
+  /* ── Countdown strip ────────────────────────────────────────────── */
+  #strip {
+    display: flex; border-bottom: 1px solid var(--border);
+    flex-shrink: 0; overflow-x: auto; background: var(--surface2);
+  }
+  .cdown { flex: 1; min-width: 150px; padding: 10px 16px;
+           border-right: 1px solid var(--border); }
+  .cdown:last-child { border-right: none; }
+  .cdown .st  { font-size: 13px; font-weight: 700; }
+  .cdown .dt  { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .cdown .num { font-size: 22px; font-weight: 800; color: var(--saffron); margin-top: 3px; }
+  .cdown .lbl { font-size: 10px; color: var(--muted); }
+  .cdown .ph  { font-size: 11px; color: #60a5fa; margin-top: 3px; }
+
+  /* ── Election selector bar ──────────────────────────────────────── */
+  #sel-bar {
+    display: flex; align-items: center; gap: 10px; padding: 9px 20px;
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    flex-shrink: 0; overflow-x: auto;
+  }
+  #sel-bar label { font-size: 13px; color: var(--muted); white-space: nowrap; }
+  #election-sel {
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text); border-radius: var(--radius);
+    padding: 6px 12px; font-size: 14px; flex: 1;
+    min-width: 220px; max-width: 560px; cursor: pointer;
+  }
+  .badge-demo { font-size: 11px; background: #4a3000; color: #fbbf24;
+    border: 1px solid #92400e; border-radius: 4px; padding: 3px 8px; }
+  .badge-live { font-size: 11px; background: #002200; color: #4ade80;
+    border: 1px solid #166534; border-radius: 4px; padding: 3px 8px;
+    display: flex; align-items: center; gap: 5px; }
+  .live-dot { width: 8px; height: 8px; border-radius: 50%; background: #4ade80;
+    animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+  /* ── Main 2-col ─────────────────────────────────────────────────── */
+  #main {
+    display: grid;
+    grid-template-columns: 1fr 460px;
+    flex: 1; min-height: 0;
+    /* Panels align to the top and grow with content when zoomed */
+    align-items: start;
+  }
+
+  /* ── Left: ECI / Historical panel ───────────────────────────────── */
+  #eci-panel { display: flex; flex-direction: column;
+               border-right: 1px solid var(--border); }
+
+  .panel-hdr {
+    padding: 12px 18px; background: var(--surface);
+    border-bottom: 1px solid var(--border); flex-shrink: 0;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .panel-hdr h2 { font-size: 12px; font-weight: 700; color: var(--muted);
+    text-transform: uppercase; letter-spacing: .06em; }
+
+  /* ── Party tally ────────────────────────────────────────────────── */
+  #tally-section { padding: 14px 18px; background: var(--surface2);
+    border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  #tally-section h3 { font-size: 11px; font-weight: 700; color: var(--muted);
+    text-transform: uppercase; letter-spacing: .06em; margin-bottom: 10px; }
+
+  .tally-labels { display: grid;
+    grid-template-columns: 110px 1fr 60px 70px 70px;
+    gap: 8px; font-size: 11px; color: var(--muted); margin-bottom: 6px; }
+  .tally-row { display: grid;
+    grid-template-columns: 110px 1fr 60px 70px 70px;
+    align-items: center; gap: 8px; font-size: 13px; margin-bottom: 7px; }
+  .t-party { font-weight: 700; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis; }
+  .t-bar-wrap { height: 10px; background: var(--border);
+    border-radius: 5px; overflow: hidden; }
+  .t-bar { height: 100%; border-radius: 5px; transition: width .5s ease; }
+  .t-won   { color: #4ade80; font-weight: 700; }
+  .t-lead  { color: #facc15; }
+  .t-total { color: var(--text); font-weight: 700; }
+
+  /* Alliance summary row (historical) */
+  .alliance-row {
+    display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px;
+    padding-top: 10px; border-top: 1px solid var(--border);
+  }
+  .alliance-chip {
+    display: flex; align-items: center; gap: 6px;
+    padding: 5px 12px; border-radius: 20px;
+    background: var(--surface); border: 1px solid var(--border);
+    font-size: 13px; font-weight: 700;
+  }
+  .alliance-chip .adot { width: 10px; height: 10px; border-radius: 50%; }
+  .alliance-chip .aseats { color: #4ade80; margin-left: 4px; }
+
+  /* Election meta (historical) */
+  #election-meta {
+    padding: 10px 18px; background: var(--surface);
+    border-bottom: 1px solid var(--border); flex-shrink: 0;
+    display: none; flex-wrap: wrap; gap: 14px; font-size: 13px;
+  }
+  .meta-item { display: flex; flex-direction: column; gap: 2px; }
+  .meta-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+  .meta-value { font-weight: 700; color: var(--text); }
+  .meta-winner { color: #4ade80; }
+
+  /* ── Constituency table ─────────────────────────────────────────── */
+  #const-section { max-height: 56vh; min-height: 280px; overflow-y: auto; }
+  #const-section::-webkit-scrollbar { width: 6px; }
+  #const-section::-webkit-scrollbar-track { background: var(--bg); }
+  #const-section::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  .sec-title {
+    position: sticky; top: 0; background: var(--surface);
+    padding: 9px 18px; font-size: 11px; font-weight: 700; color: var(--muted);
+    text-transform: uppercase; letter-spacing: .06em;
+    border-bottom: 1px solid var(--border); z-index: 2;
+  }
+
+  .const-tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .const-tbl th {
+    position: sticky; top: 34px; background: var(--surface2);
+    padding: 9px 14px; text-align: left; font-size: 12px; font-weight: 700;
+    color: var(--muted); border-bottom: 1px solid var(--border);
+    white-space: nowrap; z-index: 1;
+  }
+  .const-tbl td { padding: 9px 14px; border-bottom: 1px solid rgba(48,54,61,.5);
+    vertical-align: middle; }
+  .const-tbl tr:hover td { background: var(--surface2); }
+
+  .chip {
+    display: inline-block; padding: 3px 9px; border-radius: 12px;
+    font-size: 11px; font-weight: 700; color: #fff;
+  }
+  .tag-won  { display: inline-block; padding: 2px 8px; border-radius: 12px;
+    font-size: 11px; background: #052e16; color: #4ade80; font-weight: 700; }
+  .tag-lead { display: inline-block; padding: 2px 8px; border-radius: 12px;
+    font-size: 11px; background: #422006; color: #facc15; font-weight: 700; }
+
+  /* ── Right: News terminal ────────────────────────────────────────── */
+  #news-panel { display: flex; flex-direction: column; }
+
+  #news-hdr {
+    padding: 12px 16px; background: var(--surface);
+    border-bottom: 1px solid var(--border); flex-shrink: 0;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  #news-hdr h2 { font-size: 12px; font-weight: 700; color: var(--muted);
+    text-transform: uppercase; letter-spacing: .06em; }
+
+  /* Mini seat tracker in news panel */
+  #news-tally {
+    padding: 10px 14px; background: var(--surface2);
+    border-bottom: 1px solid var(--border); flex-shrink: 0;
+  }
+  #news-tally h3 { font-size: 11px; font-weight: 700; color: var(--muted);
+    text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
+  .mini-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .mini-chip {
+    display: flex; align-items: center; gap: 5px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 6px; padding: 5px 10px; font-size: 12px;
+  }
+  .mini-chip .dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  .mini-chip .lbl { font-weight: 700; }
+  .mini-chip .won { color: #4ade80; font-weight: 700; margin-left: 2px; }
+  .mini-chip .ld  { color: #facc15; font-size: 11px; }
+
+  /* News filter row */
+  #news-filter-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 14px; background: var(--surface);
+    border-bottom: 1px solid var(--border); flex-shrink: 0;
+  }
+  #news-search {
+    flex: 1; background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text); border-radius: var(--radius); padding: 6px 10px;
+    font-size: 13px;
+  }
+  #news-search::placeholder { color: var(--muted); }
+  #news-src-filter {
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text); border-radius: var(--radius); padding: 6px 10px;
+    font-size: 12px; cursor: pointer;
+  }
+
+  /* News feed */
+  #news-feed { max-height: 70vh; min-height: 300px; overflow-y: auto; padding: 4px 0; }
+  #news-feed::-webkit-scrollbar { width: 5px; }
+  #news-feed::-webkit-scrollbar-track { background: var(--bg); }
+  #news-feed::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  .news-item {
+    padding: 12px 16px; border-bottom: 1px solid rgba(48,54,61,.5);
+    cursor: pointer; transition: background .12s;
+    text-decoration: none; display: block; color: inherit;
+  }
+  .news-item:hover { background: var(--surface2); }
+  .news-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+  .news-src  { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; }
+  .news-time { font-size: 11px; color: var(--muted); }
+  .news-ttl  { font-size: 13px; font-weight: 600; line-height: 1.4; margin-bottom: 4px; }
+  .news-sum  { font-size: 12px; color: var(--muted); line-height: 1.4;
+    display: -webkit-box; -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical; overflow: hidden; }
+
+  /* ── Status bar ─────────────────────────────────────────────────── */
+  #status-bar {
+    padding: 5px 22px; background: var(--surface); border-top: 1px solid var(--border);
+    display: flex; align-items: center; gap: 18px; font-size: 12px;
+    color: var(--muted); flex-shrink: 0;
+    position: sticky; bottom: 0; z-index: 198;
+  }
+  #status-bar a { color: #60a5fa; }
+
+  /* ── Helpers ─────────────────────────────────────────────────────── */
+  .loading { padding: 40px; text-align: center; color: var(--muted); font-size: 14px; }
+  .err     { padding: 14px 18px; background: #1a0000; color: #f87171;
+    border: 1px solid #7f1d1d; border-radius: var(--radius); margin: 12px; font-size: 13px; }
+
+  /* scrollbar for strip */
+  #strip::-webkit-scrollbar { height: 4px; }
+  #strip::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  #sel-bar::-webkit-scrollbar { height: 4px; }
+  #sel-bar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* ── Map panel ──────────────────────────────────────────────────── */
+  #map-panel {
+    display: none; flex-direction: column;
+    border-right: 1px solid var(--border);
+    grid-column: 1; grid-row: 1;
+  }
+  #map-panel.active { display: flex; }
+
+  #leaflet-map {
+    flex: 1; min-height: 480px; max-height: calc(100vh - 220px);
+    background: #0d1117;
+  }
+
+  /* Override Leaflet default white tiles bg */
+  .leaflet-container { background: #161b22 !important; }
+  .leaflet-tile-pane { opacity: .85; }
+
+  /* Custom Leaflet tooltip */
+  .ac-tooltip {
+    background: #1c2330 !important;
+    border: 1px solid #30363d !important;
+    border-radius: 8px !important;
+    color: #e6edf3 !important;
+    font-family: 'Segoe UI', sans-serif !important;
+    font-size: 13px !important;
+    padding: 10px 14px !important;
+    box-shadow: 0 4px 20px rgba(0,0,0,.5) !important;
+    max-width: 280px !important;
+    pointer-events: none !important;
+  }
+  .ac-tooltip::before { display: none !important; }
+
+  .tt-name    { font-size: 14px; font-weight: 800; margin-bottom: 7px; border-bottom: 1px solid #30363d; padding-bottom: 6px; }
+  .tt-row     { display: flex; justify-content: space-between; gap: 16px; margin-top: 5px; font-size: 12px; }
+  .tt-label   { color: #8b949e; }
+  .tt-val     { font-weight: 700; }
+  .tt-party   { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 800; color: #fff; }
+  .tt-won     { color: #4ade80; font-size: 11px; font-weight: 700; }
+  .tt-leading { color: #facc15; font-size: 11px; font-weight: 700; }
+  .tt-nodata  { color: #8b949e; font-style: italic; font-size: 12px; }
+
+  /* Map loading overlay */
+  #map-loading-overlay {
+    position: absolute; inset: 0; background: rgba(13,17,23,.8);
+    display: flex; align-items: center; justify-content: center;
+    flex-direction: column; gap: 12px; z-index: 9999; pointer-events: none;
+  }
+  #map-loading-overlay.hidden { display: none; }
+  .map-spinner {
+    width: 36px; height: 36px; border: 3px solid #30363d;
+    border-top-color: #FF9933; border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  #map-loading-msg { color: #e6edf3; font-size: 14px; }
+
+  /* Map header controls */
+  .map-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .map-stat { font-size: 12px; color: var(--muted); padding: 3px 8px;
+    background: var(--surface2); border-radius: 4px; border: 1px solid var(--border); }
+
+  /* Dedicated map election selector row */
+  #map-sel-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 16px; background: var(--surface2);
+    border-bottom: 1px solid var(--border); flex-shrink: 0;
+  }
+  #map-sel-row label { font-size: 12px; color: var(--muted); white-space: nowrap; }
+  #map-election-sel {
+    flex: 1; background: var(--surface); border: 1px solid var(--border);
+    color: var(--text); border-radius: var(--radius);
+    padding: 6px 12px; font-size: 13px; cursor: pointer;
+  }
+
+  /* Map legend */
+  #map-legend {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    padding: 8px 16px; border-bottom: 1px solid var(--border);
+    background: var(--surface); flex-shrink: 0;
+  }
+  .legend-chip {
+    display: flex; align-items: center; gap: 5px;
+    font-size: 11px; font-weight: 700;
+  }
+  .legend-dot { width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; }
+
+  /* Map note banner */
+  #map-note-bar {
+    display: none; padding: 6px 16px; font-size: 12px;
+    background: #1a1a00; border-bottom: 1px solid #78350f; color: #fbbf24;
+    flex-shrink: 0;
+  }
+
+  /* Constituency detail card (right panel) */
+  #const-detail-card {
+    margin: 10px 14px; padding: 12px 14px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: var(--radius); display: none;
+  }
+  #const-detail-card.visible { display: block; }
+  .cd-name  { font-size: 15px; font-weight: 800; margin-bottom: 10px;
+    padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+  .cd-grid  { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .cd-item  { display: flex; flex-direction: column; gap: 2px; }
+  .cd-lbl   { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+  .cd-val   { font-size: 13px; font-weight: 700; }
+  .cd-close { float: right; cursor: pointer; color: var(--muted); font-size: 16px;
+    line-height: 1; padding: 0 2px; }
+  .cd-close:hover { color: var(--text); }
+
+  /* ── Opinion Poll panel ─────────────────────────────────────────── */
+  #poll-panel {
+    display: none; flex-direction: column;
+    border-right: 1px solid var(--border);
+    grid-column: 1; grid-row: 1;
+  }
+  #poll-panel.active { display: flex; }
+
+  .poll-disclaimer {
+    background: #1a1200; border-bottom: 1px solid #78350f;
+    color: #fbbf24; font-size: 12px; padding: 8px 18px; flex-shrink: 0;
+  }
+  .poll-disclaimer strong { color: #fde68a; }
+
+  #poll-body {
+    overflow-y: auto; flex: 1; padding-bottom: 20px;
+  }
+  #poll-body::-webkit-scrollbar { width: 6px; }
+  #poll-body::-webkit-scrollbar-track { background: var(--bg); }
+  #poll-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  .poll-section-title {
+    padding: 14px 18px 6px; font-size: 11px; font-weight: 800;
+    color: var(--muted); text-transform: uppercase; letter-spacing: .07em;
+    border-bottom: 1px solid var(--border); background: var(--bg);
+    position: sticky; top: 0; z-index: 2;
+  }
+
+  .poll-card {
+    margin: 14px 18px 0; background: var(--surface2);
+    border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+  }
+  .poll-card-hdr {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    padding: 12px 16px; background: var(--surface);
+    border-bottom: 1px solid var(--border); gap: 8px;
+  }
+  .poll-hdr-left  { display: flex; flex-direction: column; gap: 3px; }
+  .poll-agency    { font-size: 15px; font-weight: 800; }
+  .poll-sponsor   { font-size: 12px; color: var(--muted); }
+  .poll-hdr-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+  .poll-date      { font-size: 12px; color: var(--muted); }
+  .poll-type-badge {
+    font-size: 11px; padding: 2px 8px; border-radius: 4px; white-space: nowrap;
+    background: #1e2d3d; color: #93c5fd; border: 1px solid #2563eb;
+  }
+  .poll-type-badge.exit { background: #1a2e1a; color: #4ade80; border-color: #166534; }
+  .poll-type-badge.aggregate { background: #2d1e00; color: #fbbf24; border-color: #92400e; }
+
+  .poll-chart { padding: 14px 16px 4px; }
+  .poll-bar-row {
+    display: grid; grid-template-columns: 130px 1fr 46px 46px;
+    align-items: center; gap: 8px; margin-bottom: 11px;
+  }
+  .poll-party-lbl {
+    font-size: 13px; font-weight: 700;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .poll-bar-outer {
+    position: relative; height: 20px; background: rgba(255,255,255,.07);
+    border-radius: 5px; overflow: hidden;
+  }
+  .poll-bar-fill { height: 100%; border-radius: 5px; transition: width .4s ease; }
+  .poll-bar-range {
+    position: absolute; top: 0; height: 100%;
+    background: rgba(255,255,255,.13); border-radius: 5px;
+  }
+  .poll-seats { font-size: 14px; font-weight: 800; text-align: right; }
+  .poll-pct   { font-size: 12px; color: var(--muted); text-align: right; }
+
+  .poll-majority-line {
+    display: flex; align-items: center; gap: 10px;
+    padding: 6px 16px 4px; font-size: 12px; color: var(--muted);
+  }
+  .poll-maj-bar {
+    flex: 1; height: 1px; background: linear-gradient(90deg, #fbbf24 0%, transparent 100%);
+  }
+  .poll-note { padding: 5px 16px 12px; font-size: 11px; color: #6b7280; font-style: italic; }
+
+  .poll-aggregate {
+    margin: 14px 18px 0; border: 2px solid #78350f;
+    border-radius: 10px; overflow: hidden;
+  }
+  .poll-aggregate .poll-card-hdr { background: #1a1200; border-bottom-color: #78350f; }
+  </style>
+</head>
+<body>
+<div id="app">
+
+<!-- ── Header ──────────────────────────────────────────────────────── -->
+<div id="header">
+  <div class="title">
+    <span class="flag">🇮🇳</span>
+    <div>
+      <h1>India Election Monitor 2026</h1>
+      <div class="sub">Live data · results.eci.gov.in · 13 elections tracked</div>
+    </div>
+  </div>
+  <div class="ctrl">
+    <span id="last-upd">Not yet loaded</span>
+    <button class="btn primary" id="refresh-btn" onclick="refreshAll()">
+      <span id="ref-icon">↻</span> Refresh
+    </button>
+  </div>
+</div>
+
+<!-- ── Tab bar ──────────────────────────────────────────────────────── -->
+<div id="tab-bar">
+  <div class="tab active" id="tab-live"       onclick="switchTab('live')">⚡ Live 2026</div>
+  <div class="tab"        id="tab-historical" onclick="switchTab('historical')">🗂 Historical Results</div>
+  <div class="tab"        id="tab-polls"      onclick="switchTab('polls')">📊 Opinion Polls</div>
+  <div class="tab"        id="tab-map"        onclick="switchTab('map')">🗺 Constituency Map</div>
+</div>
+
+<!-- ── Countdown strip ──────────────────────────────────────────────── -->
+<div id="strip">
+  <div class="cdown">
+    <div class="st">🏛 Kerala</div><div class="dt">9 April 2026</div>
+    <div class="num" id="d-kl">—</div><div class="lbl">days to poll</div>
+    <div class="ph">Single phase · 140 seats</div>
+  </div>
+  <div class="cdown">
+    <div class="st">🏛 Tamil Nadu</div><div class="dt">23 April 2026</div>
+    <div class="num" id="d-tn">—</div><div class="lbl">days to poll</div>
+    <div class="ph">Single phase · 234 seats</div>
+  </div>
+  <div class="cdown">
+    <div class="st">🏛 West Bengal</div><div class="dt">Phase 1: 23 Apr</div>
+    <div class="num" id="d-wb">—</div><div class="lbl">days to poll</div>
+    <div class="ph">Two phases · 294 seats</div>
+  </div>
+  <div class="cdown">
+    <div class="st">🏛 Assam</div><div class="dt">April 2026</div>
+    <div class="num" id="d-as">—</div><div class="lbl">days to poll</div>
+    <div class="ph">126 seats</div>
+  </div>
+  <div class="cdown">
+    <div class="st" style="color:#4ade80">📦 Counting Day</div><div class="dt">4 May 2026 — All states</div>
+    <div class="num" id="d-cnt" style="color:#4ade80">—</div><div class="lbl">days to results</div>
+    <div class="ph">5 states + 1 UT</div>
+  </div>
+</div>
+
+<!-- ── Election selector bar ────────────────────────────────────────── -->
+<div id="sel-bar">
+  <label id="sel-label">📋 Election:</label>
+  <select id="election-sel" onchange="onElectionChange()">
+    <option value="">Loading…</option>
+  </select>
+  <span id="badge-demo" class="badge-demo" style="display:none">⚠ Demo Data</span>
+  <span id="badge-live" class="badge-live"  style="display:none">
+    <span class="live-dot"></span> LIVE
+  </span>
+</div>
+
+<!-- ── Main ────────────────────────────────────────────────────────── -->
+<div id="main">
+
+  <!-- Left panel -->
+  <div id="eci-panel">
+    <div class="panel-hdr">
+      <h2 id="left-title">⚡ ECI Live Results — Party Tally &amp; Constituencies</h2>
+    </div>
+
+    <!-- Election meta (shown for historical only) -->
+    <div id="election-meta">
+      <div class="meta-item">
+        <span class="meta-label">Date</span>
+        <span class="meta-value" id="m-date">—</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Total Seats</span>
+        <span class="meta-value" id="m-seats">—</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Majority Mark</span>
+        <span class="meta-value" id="m-maj">—</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Winner</span>
+        <span class="meta-value meta-winner" id="m-winner">—</span>
+      </div>
+    </div>
+
+    <!-- Party tally -->
+    <div id="tally-section">
+      <h3>Party-wise Seat Count</h3>
+      <div class="tally-labels">
+        <span>Party</span><span>Share</span>
+        <span>Won</span><span>Leading</span><span>Total</span>
+      </div>
+      <div id="tally-grid"><div class="loading">Loading…</div></div>
+      <div id="alliance-row" class="alliance-row" style="display:none"></div>
+    </div>
+
+    <!-- Constituency feed -->
+    <div id="const-section">
+      <div class="sec-title">Constituency-wise Results</div>
+      <div id="const-body"><div class="loading">Select an election above.</div></div>
+    </div>
+  </div>
+
+  <!-- Opinion Poll panel (hidden until Polls tab selected) -->
+  <div id="poll-panel">
+    <div class="panel-hdr">
+      <h2 id="poll-panel-title">📊 Opinion Polls — <span id="poll-state-lbl">Select Election</span></h2>
+      <button class="btn sm" onclick="loadPolls()">↻ Refresh Polls</button>
+    </div>
+    <div class="poll-disclaimer">
+      ⚠ These are <strong>pre-election opinion poll projections</strong>, not actual results.
+      All surveys have a margin of error of ±3–5%. Verify data with original sources.
+    </div>
+    <div id="poll-body">
+      <div class="loading">Select an upcoming election above to view opinion polls.</div>
+    </div>
+  </div>
+
+  <!-- Map panel (hidden until Map tab selected) -->
+  <div id="map-panel">
+    <div class="panel-hdr">
+      <h2 id="map-title">🗺 Constituency Map</h2>
+      <div class="map-controls">
+        <span class="map-stat" id="map-stat-loaded">—</span>
+        <span class="map-stat" id="map-stat-matched">—</span>
+        <button class="btn sm" onclick="resetMapView()">⌖ Reset View</button>
+      </div>
+    </div>
+
+    <!-- Dedicated election selector — independent of the main sel-bar -->
+    <div id="map-sel-row">
+      <label>📋 Election:</label>
+      <select id="map-election-sel" onchange="loadMapFromSelect()">
+        <option value="">Loading elections…</option>
+      </select>
+    </div>
+
+    <!-- Note bar (e.g. ECI loading, no data) -->
+    <div id="map-note-bar"></div>
+
+    <!-- Party legend (populated dynamically) -->
+    <div id="map-legend"></div>
+
+    <div style="position:relative;flex:1;display:flex;flex-direction:column;min-height:0">
+      <div id="map-loading-overlay">
+        <div class="map-spinner"></div>
+        <div id="map-loading-msg">Select an election above to load the map.</div>
+      </div>
+      <div id="leaflet-map"></div>
+    </div>
+  </div>
+
+  <!-- Right: News Terminal -->
+  <div id="news-panel">
+    <div id="news-hdr">
+      <h2>📰 News Terminal</h2>
+      <button class="btn sm" onclick="refreshNews()">↻ News</button>
+    </div>
+
+    <!-- Constituency detail card (shown when a constituency is clicked on the map) -->
+    <div id="const-detail-card">
+      <div class="cd-name">
+        <span class="cd-close" onclick="closeDetailCard()">✕</span>
+        <span id="cd-constituency">—</span>
+      </div>
+      <div class="cd-grid">
+        <div class="cd-item">
+          <span class="cd-lbl">Leading / Won</span>
+          <span class="cd-val" id="cd-leading-cand">—</span>
+        </div>
+        <div class="cd-item">
+          <span class="cd-lbl">Party</span>
+          <span class="cd-val" id="cd-leading-party">—</span>
+        </div>
+        <div class="cd-item">
+          <span class="cd-lbl">Trailing</span>
+          <span class="cd-val" id="cd-trailing-cand">—</span>
+        </div>
+        <div class="cd-item">
+          <span class="cd-lbl">Trailing Party</span>
+          <span class="cd-val" id="cd-trailing-party">—</span>
+        </div>
+        <div class="cd-item">
+          <span class="cd-lbl">Margin</span>
+          <span class="cd-val" id="cd-margin">—</span>
+        </div>
+        <div class="cd-item">
+          <span class="cd-lbl">Status</span>
+          <span class="cd-val" id="cd-status">—</span>
+        </div>
+      </div>
+    </div>
+
+    <div id="news-tally">
+      <h3 id="tally-news-label">Live Party Tracker</h3>
+      <div class="mini-chips" id="mini-chips">
+        <span style="color:var(--muted);font-size:12px">Loads with results…</span>
+      </div>
+    </div>
+
+    <div id="news-filter-row">
+      <input  id="news-search"    type="text" placeholder="🔍 Search headlines…" oninput="filterNews()"/>
+      <select id="news-src-filter" onchange="filterNews()">
+        <option value="">All sources</option>
+        <option>NDTV</option>
+        <option>Times of India</option>
+        <option>The Hindu</option>
+        <option>Hindustan Times</option>
+        <option>India TV News</option>
+        <option>The Quint</option>
+      </select>
+    </div>
+
+    <div id="news-feed"><div class="loading">Fetching latest election news…</div></div>
+  </div>
+
+</div><!-- /#main -->
+
+<!-- ── Status bar ──────────────────────────────────────────────────── -->
+<div id="status-bar">
+  <span>🗳️ <a href="https://results.eci.gov.in" target="_blank">results.eci.gov.in</a></span>
+  <span id="art-count">📰 0 articles</span>
+  <span id="con-count">🏛 0 constituencies</span>
+  <span style="margin-left:auto">Auto-refresh: 2 min</span>
+</div>
+
+</div><!-- /#app -->
+
+<script>
+// ─────────────────────────────────────────────────────────────────────
+// State
+// ─────────────────────────────────────────────────────────────────────
+const S = {
+  mode:         'live',     // 'live' | 'historical'
+  liveElect:    [],
+  histElect:    [],
+  partywise:    [],
+  constituents: [],
+  alliances:    null,
+  news:         [],         // all fetched articles
+  filtNews:     [],         // after client-side filter
+  currentElect: null,       // full election object (live or hist)
+};
+
+// ─────────────────────────────────────────────────────────────────────
+// Countdown
+// ─────────────────────────────────────────────────────────────────────
+function daysUntil(d) {
+  const diff = Math.ceil((new Date(d+'T00:00:00+05:30') - new Date()) / 864e5);
+  return diff > 0 ? diff : (diff === 0 ? 'Today!' : 'Done');
+}
+function updateCd() {
+  document.getElementById('d-kl').textContent  = daysUntil('2026-04-09');
+  document.getElementById('d-tn').textContent  = daysUntil('2026-04-23');
+  document.getElementById('d-wb').textContent  = daysUntil('2026-04-23');
+  document.getElementById('d-as').textContent  = daysUntil('2026-04-15');
+  document.getElementById('d-cnt').textContent = daysUntil('2026-05-04');
+}
+updateCd();
+setInterval(updateCd, 60000);
+
+// ─────────────────────────────────────────────────────────────────────
+// API
+// ─────────────────────────────────────────────────────────────────────
+async function api(path) {
+  const r = await fetch(path);
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Tab switch
+// ─────────────────────────────────────────────────────────────────────
+function switchTab(mode) {
+  S.mode = mode;
+  document.getElementById('tab-live').classList.toggle('active',       mode === 'live');
+  document.getElementById('tab-historical').classList.toggle('active', mode === 'historical');
+  document.getElementById('tab-polls').classList.toggle('active',      mode === 'polls');
+  document.getElementById('tab-map').classList.toggle('active',        mode === 'map');
+
+  const eciPanel  = document.getElementById('eci-panel');
+  const mapPanel  = document.getElementById('map-panel');
+  const pollPanel = document.getElementById('poll-panel');
+
+  // Show/hide left-column panels
+  eciPanel.style.display  = (mode === 'live' || mode === 'historical') ? 'flex' : 'none';
+  mapPanel.classList.toggle('active',  mode === 'map');
+  pollPanel.classList.toggle('active', mode === 'polls');
+
+  if (mode === 'live') {
+    document.getElementById('left-title').textContent = '⚡ ECI Live Results — Party Tally & Constituencies';
+    document.getElementById('election-meta').style.display = 'none';
+    document.getElementById('strip').style.display = 'flex';
+    document.getElementById('sel-label').textContent = '📋 Election:';
+    populateSelect(S.liveElect, 'live');
+
+  } else if (mode === 'historical') {
+    document.getElementById('left-title').textContent = '🗂 Historical Election Results';
+    document.getElementById('strip').style.display = 'none';
+    document.getElementById('sel-label').textContent = '📅 Past Election:';
+    populateSelect(S.histElect, 'historical');
+
+  } else if (mode === 'polls') {
+    document.getElementById('strip').style.display = 'none';
+    document.getElementById('sel-label').textContent = '📊 Election:';
+    // Populate with upcoming elections that have polls
+    const pollElections = [
+      { val: 'KL2026', label: '🏛 Kerala — April 9, 2026 (140 seats)' },
+      { val: 'TN2026', label: '🏛 Tamil Nadu — April 23, 2026 (234 seats)' },
+      { val: 'WB2026', label: '🏛 West Bengal — April 23/29, 2026 (294 seats)' },
+      { val: 'AS2026', label: '🏛 Assam — April 2026 (126 seats)' },
+      ...S.liveElect.map((e, i) => ({ val: `live:${i}`, label: `⚡ ${e.name}` })),
+    ];
+    const sel = document.getElementById('election-sel');
+    sel.innerHTML = pollElections.map(e =>
+      `<option value="${e.val}">${e.label}</option>`).join('');
+    loadPolls();
+
+  } else if (mode === 'map') {
+    document.getElementById('strip').style.display = 'none';
+    // Populate the DEDICATED map selector (independent of main sel-bar)
+    populateMapSelector();
+    // Auto-load first available election
+    const mapSel = document.getElementById('map-election-sel');
+    if (mapSel.value) loadMapFromSelect();
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Populate the dedicated map election selector
+// ─────────────────────────────────────────────────────────────────────
+function populateMapSelector() {
+  const sel = document.getElementById('map-election-sel');
+  const groups = [
+    {
+      label: '⚡ Live / Upcoming 2026',
+      elections: S.liveElect.map((e, i) => ({
+        val: `live:${i}`, label: e.name, id: e.id,
+      })),
+    },
+    {
+      label: '🏛 State Elections (Vidhan Sabha)',
+      elections: S.histElect
+        .filter(e => e.type === 'state')
+        .map(e => ({
+          val:   `hist:${e.id}`,
+          label: `${e.short || e.name} — ${e.date?.slice(0,4)||''}`,
+          id:    e.id,
+        })),
+    },
+    {
+      label: '🇮🇳 General Elections (Lok Sabha — state-level view)',
+      elections: S.histElect
+        .filter(e => e.type === 'general')
+        .map(e => ({
+          val:   `hist:${e.id}`,
+          label: `${e.short || e.name} — ${e.date?.slice(0,4)||''}`,
+          id:    e.id,
+        })),
+    },
+  ];
+
+  let html = '';
+  for (const g of groups) {
+    if (!g.elections.length) continue;
+    html += `<optgroup label="${g.label}">`;
+    html += g.elections.map(e =>
+      `<option value="${e.val}">${e.label}</option>`
+    ).join('');
+    html += `</optgroup>`;
+  }
+  sel.innerHTML = html || '<option value="">No elections available</option>';
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Populate shared dropdown (live / historical tabs)
+// ─────────────────────────────────────────────────────────────────────
+function populateSelect(elections, mode) {
+  const sel = document.getElementById('election-sel');
+  if (mode === 'live') {
+    sel.innerHTML = elections.map((e, i) =>
+      `<option value="live:${i}">${e.name}</option>`).join('');
+  } else {
+    sel.innerHTML = elections.map(e =>
+      `<option value="hist:${e.id}">${e.short || e.name} — ${e.type === 'general' ? '🇮🇳 General' : '🏛 State'} · ${e.date?.slice(0,4)||''}</option>`
+    ).join('');
+  }
+  // Trigger load for first item
+  if (elections.length) onElectionChange();
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Election change handler
+// ─────────────────────────────────────────────────────────────────────
+async function onElectionChange() {
+  const val = document.getElementById('election-sel').value;
+  if (!val) return;
+
+  if (S.mode === 'map') {
+    await loadMapFromSelect();
+    return;
+  }
+
+  if (S.mode === 'polls') {
+    await loadPolls();
+    return;
+  }
+
+  clearResults();
+
+  if (val.startsWith('live:')) {
+    const idx = parseInt(val.split(':')[1]);
+    await loadLiveElection(idx);
+  } else if (val.startsWith('hist:')) {
+    const id = val.split(':')[1];
+    await loadHistoricalElection(id);
+  }
+}
+
+function clearResults() {
+  document.getElementById('tally-grid').innerHTML  = '<div class="loading">Loading…</div>';
+  document.getElementById('const-body').innerHTML  = '<div class="loading">Loading…</div>';
+  document.getElementById('alliance-row').style.display = 'none';
+  document.getElementById('election-meta').style.display = 'none';
+  document.getElementById('badge-demo').style.display = 'none';
+  document.getElementById('badge-live').style.display = 'none';
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Load LIVE election
+// ─────────────────────────────────────────────────────────────────────
+async function loadLiveElection(idx) {
+  try {
+    const [pw, co] = await Promise.all([
+      api(`/api/partywise?idx=${idx}`),
+      api(`/api/constituencies?idx=${idx}`),
+    ]);
+    S.partywise    = pw.data   || [];
+    S.constituents = co.data   || [];
+    S.alliances    = null;
+    S.currentElect = S.liveElect[idx];
+
+    renderTally(S.partywise, null);
+    renderConstituencies(S.constituents);
+    renderMiniTally(S.partywise);
+
+    const isDemo = pw.demo || co.demo;
+    document.getElementById('badge-demo').style.display = isDemo ? 'inline' : 'none';
+    document.getElementById('badge-live').style.display = isDemo ? 'none'   : 'flex';
+
+    // Filter news for this election
+    await refreshNews();
+  } catch(e) {
+    document.getElementById('tally-grid').innerHTML = `<div class="err">Error: ${e.message}</div>`;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Load HISTORICAL election
+// ─────────────────────────────────────────────────────────────────────
+async function loadHistoricalElection(id) {
+  try {
+    const resp = await api(`/api/historical/partywise?id=${id}`);
+    S.partywise    = resp.data     || [];
+    S.alliances    = resp.alliances || null;
+    S.constituents = [];   // no constituency data for historical
+    S.currentElect = S.histElect.find(e => e.id === id);
+
+    // Show meta bar
+    if (resp.meta) {
+      const m = resp.meta;
+      document.getElementById('election-meta').style.display = 'flex';
+      document.getElementById('m-date').textContent   = new Date(m.date).toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'});
+      document.getElementById('m-seats').textContent  = m.total_seats;
+      document.getElementById('m-maj').textContent    = m.majority + ' seats';
+      document.getElementById('m-winner').textContent = m.winner;
+      document.getElementById('tally-news-label').textContent =
+        `Seat Tally — ${m.name}`;
+    }
+
+    renderTally(S.partywise, S.alliances);
+    renderMiniTally(S.partywise);
+
+    // Historical: no constituency table — show vote share table instead
+    renderVoteShareTable(S.partywise);
+
+    document.getElementById('badge-demo').style.display = 'none';
+    document.getElementById('badge-live').style.display = 'none';
+
+    // Filter news for this historical election
+    await refreshNewsForElection(id);
+  } catch(e) {
+    document.getElementById('tally-grid').innerHTML = `<div class="err">Error: ${e.message}</div>`;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Render party tally (shared for live + historical)
+// ─────────────────────────────────────────────────────────────────────
+function renderTally(partywise, alliances) {
+  if (!partywise.length) {
+    document.getElementById('tally-grid').innerHTML = '<div class="loading">No data available.</div>';
+    return;
+  }
+  const maxSeats = Math.max(...partywise.map(p => p.total), 1);
+
+  document.getElementById('tally-grid').innerHTML = partywise.slice(0, 12).map(p => {
+    const pct = Math.round((p.total / maxSeats) * 100);
+    const votePct = p.vote_pct ? `<span style="font-size:11px;color:var(--muted);margin-left:4px">${p.vote_pct}%</span>` : '';
+    return `
+    <div class="tally-row">
+      <div class="t-party" title="${p.full||p.party}">${p.party}${votePct}</div>
+      <div class="t-bar-wrap">
+        <div class="t-bar" style="width:${pct}%;background:${p.colour}"></div>
+      </div>
+      <div class="t-won">${p.won}</div>
+      <div class="t-lead">${p.leading || '—'}</div>
+      <div class="t-total">${p.total}</div>
+    </div>`;
+  }).join('');
+
+  // Alliance summary
+  const row = document.getElementById('alliance-row');
+  if (alliances && Object.keys(alliances).length) {
+    row.style.display = 'flex';
+    row.innerHTML = Object.entries(alliances).map(([name, d]) => `
+      <div class="alliance-chip">
+        <span class="adot" style="background:${d.colour}"></span>
+        <span>${name}</span>
+        <span class="aseats">${d.seats}</span>
+      </div>`).join('');
+  } else {
+    row.style.display = 'none';
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Render constituency table (live only)
+// ─────────────────────────────────────────────────────────────────────
+function renderConstituencies(rows) {
+  document.getElementById('con-count').textContent = `🏛 ${rows.length} constituencies`;
+  const body = document.getElementById('const-body');
+  if (!rows.length) {
+    body.innerHTML = '<div class="loading">No constituency data yet.</div>';
+    return;
+  }
+  body.innerHTML = `
+    <table class="const-tbl">
+      <thead><tr>
+        <th>Constituency</th><th>Leading / Won</th><th>Party</th>
+        <th>Trailing</th><th>Margin</th><th>Status</th>
+      </tr></thead>
+      <tbody>${rows.map(r => `
+        <tr>
+          <td>${r.constituency}</td>
+          <td><strong>${r.leading_candidate}</strong></td>
+          <td><span class="chip" style="background:${r.colour}">${r.leading_party}</span></td>
+          <td style="color:var(--muted)">${r.trailing_candidate}
+            <span style="font-size:11px">(${r.trailing_party})</span></td>
+          <td><strong>${Number(r.margin).toLocaleString('en-IN')}</strong></td>
+          <td>${r.status==='Won'
+            ? '<span class="tag-won">✓ Won</span>'
+            : '<span class="tag-lead">↑ Leading</span>'}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Vote-share table for historical (replaces constituency feed)
+// ─────────────────────────────────────────────────────────────────────
+function renderVoteShareTable(partywise) {
+  document.getElementById('con-count').textContent = `📊 ${partywise.length} parties`;
+  const body = document.getElementById('const-body');
+  body.innerHTML = `
+    <table class="const-tbl">
+      <thead><tr>
+        <th>#</th><th>Party</th><th>Seats Won</th><th>Vote %</th><th>Alliance</th>
+      </tr></thead>
+      <tbody>${partywise.map((p, i) => `
+        <tr>
+          <td style="color:var(--muted)">${i+1}</td>
+          <td><span class="chip" style="background:${p.colour}">${p.party}</span>
+            <span style="margin-left:8px;color:var(--muted);font-size:12px">${p.full||''}</span></td>
+          <td><strong style="color:#4ade80;font-size:15px">${p.won}</strong></td>
+          <td>${p.vote_pct ? `<strong>${p.vote_pct}%</strong>` : '—'}</td>
+          <td style="color:var(--muted)">${p.alliance||'—'}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Mini tally (news panel)
+// ─────────────────────────────────────────────────────────────────────
+function renderMiniTally(partywise) {
+  document.getElementById('mini-chips').innerHTML = partywise.slice(0, 8).map(p => `
+    <div class="mini-chip">
+      <span class="dot" style="background:${p.colour}"></span>
+      <span class="lbl">${p.party}</span>
+      <span class="won">${p.won}</span>
+      ${p.leading ? `<span class="ld">+${p.leading}</span>` : ''}
+    </div>`).join('');
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// News
+// ─────────────────────────────────────────────────────────────────────
+async function refreshNews() {
+  document.getElementById('news-feed').innerHTML = '<div class="loading">Fetching news…</div>';
+  try {
+    const resp = await api('/api/news');
+    S.news = resp.data || [];
+    filterNews();
+  } catch(e) {
+    document.getElementById('news-feed').innerHTML = `<div class="err">News failed: ${e.message}</div>`;
+  }
+}
+
+async function refreshNewsForElection(electionId) {
+  document.getElementById('news-feed').innerHTML = '<div class="loading">Fetching relevant news…</div>';
+  try {
+    const resp = await api(`/api/news?election_id=${electionId}`);
+    S.news = resp.data || [];
+    filterNews();
+  } catch(e) {
+    await refreshNews();
+  }
+}
+
+function filterNews() {
+  const q   = (document.getElementById('news-search').value || '').toLowerCase();
+  const src = (document.getElementById('news-src-filter').value || '').toLowerCase();
+
+  S.filtNews = S.news.filter(a => {
+    const text = (a.title + ' ' + (a.summary||'')).toLowerCase();
+    if (q   && !text.includes(q))                          return false;
+    if (src && !a.source.toLowerCase().includes(src))      return false;
+    return true;
+  });
+
+  renderNews(S.filtNews.length ? S.filtNews : S.news);
+}
+
+function renderNews(articles) {
+  document.getElementById('art-count').textContent = `📰 ${articles.length} articles`;
+  if (!articles.length) {
+    document.getElementById('news-feed').innerHTML = '<div class="loading">No articles found.</div>';
+    return;
+  }
+  document.getElementById('news-feed').innerHTML = articles.map(a => `
+    <a class="news-item" href="${a.url||'#'}" target="_blank" rel="noopener">
+      <div class="news-meta">
+        <span class="news-src" style="color:${a.colour}">${a.source}</span>
+        <span class="news-time">${a.display_ts||''}</span>
+        ${a.demo ? '<span class="badge-demo" style="font-size:10px">demo</span>' : ''}
+      </div>
+      <div class="news-ttl">${a.title}</div>
+      ${a.summary ? `<div class="news-sum">${a.summary}</div>` : ''}
+    </a>`).join('');
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Full refresh
+// ─────────────────────────────────────────────────────────────────────
+async function refreshAll() {
+  const btn  = document.getElementById('refresh-btn');
+  const icon = document.getElementById('ref-icon');
+  btn.disabled = true;
+  icon.classList.add('spin');
+
+  try {
+    await fetch('/api/refresh', { method: 'POST' });
+
+    // Load live elections
+    const liveResp = await api('/api/elections');
+    S.liveElect = liveResp.data || [];
+
+    // Load historical elections
+    const histResp = await api('/api/historical/elections');
+    S.histElect = histResp.data || [];
+
+    if (S.mode === 'live') {
+      populateSelect(S.liveElect, 'live');
+    } else if (S.mode === 'historical') {
+      populateSelect(S.histElect, 'historical');
+    } else if (S.mode === 'map') {
+      switchTab('map');
+    } else if (S.mode === 'polls') {
+      switchTab('polls');
+    }
+    // Always keep map selector fresh (even when not on map tab)
+    populateMapSelector();
+
+    await refreshNews();
+
+    document.getElementById('last-upd').textContent =
+      'Updated ' + new Date().toLocaleTimeString('en-IN');
+  } catch(e) {
+    document.getElementById('last-upd').textContent = '⚠ Refresh failed';
+    console.error(e);
+  } finally {
+    btn.disabled = false;
+    icon.classList.remove('spin');
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Boot
+// ─────────────────────────────────────────────────────────────────────
+(async () => {
+  await refreshAll();
+  setInterval(refreshAll, 2 * 60 * 1000);
+})();
+
+// ═════════════════════════════════════════════════════════════════════
+// LEAFLET MAP ENGINE
+// ═════════════════════════════════════════════════════════════════════
+
+// Leaflet loaded on demand to keep initial page weight low
+let _leafletLoaded = false;
+let _leafletMap    = null;   // Leaflet map instance
+let _geoLayer      = null;   // current GeoJSON layer
+let _geoCache      = {};     // { stateSlug: GeoJSON }
+let _mapResultMap  = {};     // normalised name → result row
+let _mapPartyClrs  = {};     // party → colour (for historical)
+let _mapType       = 'live'; // 'live' | 'historical'
+
+// GeoJSON source (browser fetch — goes through user's network, not VM proxy)
+const GEOJSON_BASE_URL =
+  'https://raw.githubusercontent.com/datta07/INDIAN-SHAPEFILES/master/STATES/';
+
+// ── Name normalisation (mirrors server-side _norm()) ────────────────
+function normName(s) {
+  return (s || '').toUpperCase()
+    .replace(/^\d+\s*[-–.]\s*/, '')   // strip "23 - " prefixes
+    .replace(/[^A-Z0-9 ]/g, ' ')
+    .replace(/\s+/g, ' ').trim();
+}
+
+// Fuzzy lookup: exact → starts-with → contains
+function findResult(geoName) {
+  const key = normName(geoName);
+  if (_mapResultMap[key]) return _mapResultMap[key];
+  // partial match
+  for (const [k, v] of Object.entries(_mapResultMap)) {
+    if (k.startsWith(key) || key.startsWith(k)) return v;
+  }
+  // substring
+  for (const [k, v] of Object.entries(_mapResultMap)) {
+    if (k.includes(key) || key.includes(k)) return v;
+  }
+  return null;
+}
+
+// ── Load Leaflet from CDN lazily ─────────────────────────────────────
+async function ensureLeaflet() {
+  if (_leafletLoaded) return;
+  await new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+    s.onload = res; s.onerror = rej;
+    document.head.appendChild(s);
+  });
+  _leafletLoaded = true;
+}
+
+// ── Main entry: load map for the dedicated map dropdown ──────────────
+async function loadMapFromSelect() {
+  // Always read from the DEDICATED map selector, not the shared sel-bar
+  const val = document.getElementById('map-election-sel').value;
+  if (!val) return;
+
+  // Resolve to a clean election ID
+  let electionId;
+  if (val.startsWith('hist:')) {
+    electionId = val.split(':')[1];
+  } else if (val.startsWith('live:')) {
+    const idx  = parseInt(val.split(':')[1]);
+    electionId = S.liveElect[idx]?.id || val;
+  } else {
+    electionId = val;
+  }
+
+  // Reset note bar and legend
+  const noteBar = document.getElementById('map-note-bar');
+  noteBar.style.display = 'none';
+  document.getElementById('map-legend').innerHTML = '';
+
+  // Show loading overlay
+  const overlay = document.getElementById('map-loading-overlay');
+  overlay.classList.remove('hidden');
+  overlay.querySelector('.map-spinner').style.display = '';
+  document.getElementById('map-loading-msg').textContent = 'Fetching result data…';
+
+  try {
+    await ensureLeaflet();
+
+    const md = await api(`/api/map-data/${electionId}`);
+    _mapResultMap = {};
+    _mapPartyClrs = md.party_colours || {};
+    _mapType      = md.type || 'live';
+
+    // Index result_map by normalised constituency name
+    for (const [k, v] of Object.entries(md.result_map || {})) {
+      _mapResultMap[normName(k)] = v;
+    }
+
+    if (!md.geojson_url) {
+      setMapOverlay('No constituency map available for this election.');
+      return;
+    }
+
+    // Note bar
+    if (md.map_note) {
+      noteBar.textContent = `ℹ️ ${md.map_note}`;
+      noteBar.style.display = 'block';
+    }
+
+    const stateLabel = md.type === 'lok_sabha'
+      ? 'India (Lok Sabha — state-level)'
+      : (md.state || electionId);
+
+    document.getElementById('map-title').textContent = `🗺 ${stateLabel}`;
+    document.getElementById('map-loading-msg').textContent =
+      `Loading ${stateLabel} boundaries…`;
+
+    // Fetch GeoJSON (cached)
+    let geojson = _geoCache[stateLabel];
+    if (!geojson) {
+      const resp = await fetch(md.geojson_url);
+      if (!resp.ok) {
+        // Try alternate URL with unencoded spaces (some CDN configs differ)
+        const altUrl = md.geojson_url.replace(/%20/g, ' ');
+        const resp2  = await fetch(altUrl);
+        if (!resp2.ok) throw new Error(
+          `Boundary data not found (${resp.status}). ` +
+          `The datta07/INDIAN-SHAPEFILES repo may not have this state yet.`
+        );
+        geojson = await resp2.json();
+      } else {
+        geojson = await resp.json();
+      }
+      _geoCache[stateLabel] = geojson;
+    }
+
+    renderLeafletMap(geojson, stateLabel, md);
+    // Overlay is hidden inside renderLeafletMap after successful render
+  } catch (err) {
+    console.error('Map error:', err);
+    overlay.querySelector('.map-spinner').style.display = 'none';
+    document.getElementById('map-loading-msg').textContent = `⚠ ${err.message}`;
+  }
+}
+
+function setMapOverlay(msg) {
+  const ov = document.getElementById('map-loading-overlay');
+  ov.classList.remove('hidden');
+  ov.querySelector('.map-spinner').style.display = 'none';
+  document.getElementById('map-loading-msg').textContent = msg;
+}
+
+// ── Render the Leaflet map ─────────────────────────────────────────
+function renderLeafletMap(geojson, stateSlug, md) {
+  const container = document.getElementById('leaflet-map');
+
+  // Init or re-use map
+  if (!_leafletMap) {
+    _leafletMap = L.map('leaflet-map', {
+      zoomControl: true,
+      attributionControl: true,
+    });
+    // Use CartoDB dark tiles for a clean dark-theme map
+    L.tileLayer(
+      'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+      {
+        attribution: '&copy; <a href="https://www.openstreetmap.org">OSM</a> &copy; <a href="https://carto.com">CartoDB</a>',
+        subdomains: 'abcd', maxZoom: 19,
+      }
+    ).addTo(_leafletMap);
+  }
+
+  // Remove old GeoJSON layer
+  if (_geoLayer) { _leafletMap.removeLayer(_geoLayer); _geoLayer = null; }
+
+  let matched = 0, total = 0;
+
+  _geoLayer = L.geoJSON(geojson, {
+    style: featureStyle,
+    onEachFeature: (feature, layer) => {
+      total++;
+      const name = getACName(feature.properties);
+      const result = findResult(name);
+      if (result) matched++;
+
+      // ── Hover tooltip ──────────────────────────────────────────
+      const tooltipHTML = buildTooltip(name, result);
+      layer.bindTooltip(tooltipHTML, {
+        className:  'ac-tooltip',
+        sticky:     true,
+        opacity:    0.97,
+        direction:  'auto',
+      });
+
+      // ── Highlight on hover ──────────────────────────────────
+      layer.on('mouseover', function(e) {
+        this.setStyle({ weight: 2.5, fillOpacity: 0.95 });
+        this.bringToFront();
+      });
+      layer.on('mouseout', function(e) {
+        _geoLayer.resetStyle(this);
+      });
+
+      // ── Click: update side-panel ──────────────────────────────
+      layer.on('click', function(e) {
+        showDetailCard(name, result);
+        L.DomEvent.stopPropagation(e);
+      });
+    },
+  }).addTo(_leafletMap);
+
+  // Fit map to layer bounds
+  try { _leafletMap.fitBounds(_geoLayer.getBounds(), { padding: [10, 10] }); }
+  catch(e) {}
+
+  // Update stats bar
+  document.getElementById('map-stat-loaded').textContent  = `${total} units loaded`;
+  document.getElementById('map-stat-matched').textContent =
+    matched ? `${matched} with results` : 'No data yet';
+
+  // Build party legend from result_map
+  buildMapLegend();
+
+  document.getElementById('map-loading-overlay').classList.add('hidden');
+}
+
+// ── Build party legend from current _mapResultMap ─────────────────────
+function buildMapLegend() {
+  const seen   = new Map();  // party → colour
+  for (const r of Object.values(_mapResultMap)) {
+    if (r.leading_party && r.colour && !seen.has(r.leading_party)) {
+      seen.set(r.leading_party, r.colour);
+    }
+  }
+  // Also add Lok Sabha / historical party colours
+  for (const [p, c] of Object.entries(_mapPartyClrs)) {
+    if (!seen.has(p)) seen.set(p, c);
+  }
+
+  const legend = document.getElementById('map-legend');
+  if (!seen.size) { legend.innerHTML = ''; return; }
+
+  legend.innerHTML = [...seen.entries()].slice(0, 12).map(([party, clr]) =>
+    `<div class="legend-chip">
+       <span class="legend-dot" style="background:${clr}"></span>
+       <span>${party}</span>
+     </div>`
+  ).join('');
+}
+
+// ── Get constituency / state name from GeoJSON properties ────────────
+// Handles: Assembly-constituency, Parliamentary-constituency, State-boundary layers
+function getACName(props) {
+  return props.AC_NAME      || props.ASSEMBLY_N  || props.CONSTNAME  ||
+         props.PC_NAME      || props.Constituency_Name               ||
+         props.State_Name   || props.STATE_NAME  || props.NAME_1     ||
+         props.ST_NM        || props.statename                       ||
+         props.Name         || props.name        || props.AC         || '';
+}
+
+// ── Colour a feature by leading/winning party ─────────────────────────
+function featureStyle(feature) {
+  const name   = getACName(feature.properties);
+  const result = findResult(name);
+  let fillColor = '#1e2736';   // no data — dark slate
+  let opacity   = 0.5;
+
+  if (result && result.colour) {
+    // Has constituency-level result: full colour
+    fillColor = result.colour;
+    opacity   = result.status === 'Won' ? 0.85 : 0.65;
+  } else if (_mapType === 'lok_sabha' && result) {
+    // Lok Sabha state choropleth: always treat as "won"
+    fillColor = result.colour || '#FF9933';
+    opacity   = 0.75;
+  } else if ((_mapType === 'historical' || _mapType === 'lok_sabha')
+             && Object.keys(_mapPartyClrs).length) {
+    // No constituency data but have party colours: gentle tint
+    const clr = Object.values(_mapPartyClrs)[0] || '#FF9933';
+    fillColor = clr;
+    opacity   = 0.28;
+  }
+
+  return {
+    fillColor,
+    fillOpacity: opacity,
+    color:       '#30363d',
+    weight:      0.7,
+  };
+}
+
+// ── Build hover tooltip HTML ──────────────────────────────────────────
+function buildTooltip(name, result) {
+  if (!result) {
+    return `<div class="tt-name">${name || 'Unknown'}</div>
+            <div class="tt-nodata">No results yet — election pending</div>`;
+  }
+
+  const statusTag = result.status === 'Won'
+    ? `<span class="tt-won">✓ Won</span>`
+    : `<span class="tt-leading">↑ Leading</span>`;
+  const margin = result.margin
+    ? Number(result.margin).toLocaleString('en-IN')
+    : '—';
+
+  return `
+    <div class="tt-name">${name}</div>
+    <div class="tt-row">
+      <span class="tt-label">Leading / Won</span>
+      <span class="tt-val">${result.leading_candidate || '—'}</span>
+    </div>
+    <div class="tt-row">
+      <span class="tt-label">Party</span>
+      <span><span class="tt-party" style="background:${result.colour||'#555'}">${result.leading_party||'—'}</span></span>
+    </div>
+    <div class="tt-row">
+      <span class="tt-label">Trailing</span>
+      <span class="tt-val" style="color:var(--muted)">${result.trailing_candidate||'—'}
+        <span style="font-size:10px;color:#8b949e">(${result.trailing_party||'—'})</span>
+      </span>
+    </div>
+    <div class="tt-row">
+      <span class="tt-label">Margin</span>
+      <span class="tt-val">${margin}</span>
+    </div>
+    <div class="tt-row">
+      <span class="tt-label">Status</span>
+      <span>${statusTag}</span>
+    </div>`;
+}
+
+// ── Side-panel detail card ────────────────────────────────────────────
+function showDetailCard(name, result) {
+  const card = document.getElementById('const-detail-card');
+  document.getElementById('cd-constituency').textContent = name || '—';
+
+  if (result) {
+    document.getElementById('cd-leading-cand').textContent  = result.leading_candidate  || '—';
+    document.getElementById('cd-leading-party').innerHTML   =
+      `<span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:800;color:#fff;background:${result.colour||'#555'}">${result.leading_party||'—'}</span>`;
+    document.getElementById('cd-trailing-cand').textContent = result.trailing_candidate || '—';
+    document.getElementById('cd-trailing-party').textContent = result.trailing_party    || '—';
+    document.getElementById('cd-margin').textContent =
+      result.margin ? Number(result.margin).toLocaleString('en-IN') : '—';
+    document.getElementById('cd-status').innerHTML =
+      result.status === 'Won'
+        ? '<span style="color:#4ade80;font-weight:700">✓ Won</span>'
+        : '<span style="color:#facc15;font-weight:700">↑ Leading</span>';
+  } else {
+    ['cd-leading-cand','cd-trailing-cand','cd-trailing-party','cd-margin'].forEach(
+      id => document.getElementById(id).textContent = '—'
+    );
+    document.getElementById('cd-leading-party').textContent = '—';
+    document.getElementById('cd-status').textContent = 'No data yet';
+  }
+  card.classList.add('visible');
+}
+
+function closeDetailCard() {
+  document.getElementById('const-detail-card').classList.remove('visible');
+}
+
+function resetMapView() {
+  if (_geoLayer && _leafletMap) {
+    try { _leafletMap.fitBounds(_geoLayer.getBounds(), { padding: [10,10] }); }
+    catch(e) {}
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════════
+// OPINION POLL ENGINE
+// ═════════════════════════════════════════════════════════════════════
+
+async function loadPolls() {
+  const val = document.getElementById('election-sel').value;
+  // val may be 'KL2026', 'WB2026', or 'live:N'
+  const electionId = val.startsWith('live:')
+    ? (S.liveElect[parseInt(val.split(':')[1])]?.id || val)
+    : (val || 'WB2026');
+
+  document.getElementById('poll-state-lbl').textContent = electionId;
+  document.getElementById('poll-body').innerHTML = '<div class="loading">Loading polls…</div>';
+
+  try {
+    const resp = await api(`/api/polls?election_id=${electionId}`);
+    const polls     = resp.polls     || [];
+    const aggregate = resp.aggregate || null;
+    renderPolls(electionId, polls, aggregate);
+  } catch(e) {
+    document.getElementById('poll-body').innerHTML =
+      `<div class="err">Failed to load polls: ${e.message}</div>`;
+  }
+}
+
+function renderPolls(electionId, polls, aggregate) {
+  const body = document.getElementById('poll-body');
+  if (!polls.length) {
+    body.innerHTML = '<div class="loading">No opinion polls found for this election yet.</div>';
+    return;
+  }
+
+  // State label for panel title
+  const stateName = polls[0]?.state || electionId;
+  document.getElementById('poll-state-lbl').textContent =
+    `${stateName} (${polls[0]?.total_seats} seats · majority ${polls[0]?.majority})`;
+
+  let html = '';
+
+  // ── Poll of Polls aggregate ──────────────────────────────────────
+  if (aggregate) {
+    html += renderPollCard(aggregate, /* isAggregate= */ true);
+  }
+
+  // ── Section header for individual polls ─────────────────────────
+  html += `<div class="poll-section-title">Individual Surveys (${polls.length} polls)</div>`;
+
+  // ── Individual poll cards ────────────────────────────────────────
+  for (const poll of polls) {
+    html += renderPollCard(poll, false);
+  }
+
+  body.innerHTML = html;
+}
+
+function renderPollCard(poll, isAggregate) {
+  const totalSeats = poll.total_seats || poll.seats || 1;
+  const majority   = poll.majority    || Math.ceil(totalSeats / 2);
+  const results    = poll.results     || [];
+  const maxSeats   = Math.max(...results.map(r => r.seats || 0), 1);
+
+  // Type badge text
+  const typeMap = {
+    'pre-poll':  'Pre-Poll Survey',
+    'exit-poll': 'Exit Poll',
+    'tracker':   'Tracker Poll',
+  };
+  const typeText  = isAggregate ? 'Poll of Polls' : (typeMap[poll.type] || poll.type || 'Survey');
+  const typeClass = isAggregate ? 'aggregate' : (poll.type === 'exit-poll' ? 'exit' : '');
+
+  const cardClass = isAggregate ? 'poll-card poll-aggregate' : 'poll-card';
+
+  let html = `
+  <div class="${cardClass}">
+    <div class="poll-card-hdr">
+      <div class="poll-hdr-left">
+        <span class="poll-agency">${poll.agency || poll.label || 'Survey'}</span>
+        ${poll.sponsor ? `<span class="poll-sponsor">Sponsored by ${poll.sponsor}</span>` : ''}
+        ${isAggregate && poll.poll_count
+          ? `<span class="poll-sponsor">${poll.poll_count} surveys averaged</span>` : ''}
+      </div>
+      <div class="poll-hdr-right">
+        ${poll.date ? `<span class="poll-date">${new Date(poll.date).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}</span>` : ''}
+        <span class="poll-type-badge ${typeClass}">${typeText}</span>
+      </div>
+    </div>
+    <div class="poll-chart">`;
+
+  for (const r of results) {
+    const barPct   = Math.round((r.seats / totalSeats) * 100);
+    const lowPct   = r.low  != null ? Math.round((r.low  / totalSeats) * 100) : null;
+    const highPct  = r.high != null ? Math.round((r.high / totalSeats) * 100) : null;
+    const rangeStyle = (lowPct != null && highPct != null)
+      ? `left:${lowPct}%;width:${highPct - lowPct}%`
+      : '';
+    const won = r.seats >= majority;
+
+    html += `
+      <div class="poll-bar-row">
+        <div class="poll-party-lbl" title="${r.party}">${r.label || r.party}</div>
+        <div class="poll-bar-outer">
+          ${rangeStyle ? `<div class="poll-bar-range" style="${rangeStyle}"></div>` : ''}
+          <div class="poll-bar-fill" style="width:${barPct}%;background:${r.colour}${won ? '' : 'cc'}"></div>
+        </div>
+        <div class="poll-seats" style="color:${r.colour}">${r.seats}</div>
+        <div class="poll-pct">${r.pct}%</div>
+      </div>`;
+  }
+
+  html += `</div>`;
+
+  // Majority marker line
+  const majPct = Math.round((majority / totalSeats) * 100);
+  html += `
+    <div class="poll-majority-line">
+      <div class="poll-maj-bar" style="width:${majPct}%"></div>
+      <span>Majority mark: <strong>${majority}</strong> of ${totalSeats} seats</span>
+    </div>`;
+
+  if (poll.note) {
+    html += `<div class="poll-note">📋 ${poll.note}</div>`;
+  }
+
+  html += `</div>`;
+  return html;
+}
+</script>
+</body>
+</html>
