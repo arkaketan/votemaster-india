@@ -5,7 +5,6 @@ Uses feedparser — works without any browser or JS rendering.
 """
 
 import logging
-import time
 import feedparser
 from datetime import datetime, timezone
 
@@ -111,20 +110,27 @@ class NewsScraper:
     def __init__(self, max_per_feed: int = 15, timeout: int = 10):
         self.max_per_feed = max_per_feed
         self.timeout = timeout
-        # feedparser uses urllib internally; set socket timeout globally
-        import socket
-        socket.setdefaulttimeout(timeout)
 
     def get_election_news(self, filter_keywords: bool = True) -> list[dict]:
         """
         Fetch and return election-related news articles from all registered feeds.
         Articles are sorted newest-first. Falls back to demo data if all feeds fail.
+        Uses requests (with proper timeout) to download feed content, then feedparser
+        to parse it — avoids feedparser hanging indefinitely on slow feeds.
         """
+        import requests as _req
+
         articles = []
 
         for feed_cfg in FEEDS:
             try:
-                feed = feedparser.parse(feed_cfg["url"])
+                resp = _req.get(
+                    feed_cfg["url"],
+                    timeout=self.timeout,
+                    headers={"User-Agent": "Mozilla/5.0 (compatible; VoteMaster/1.0)"},
+                )
+                resp.raise_for_status()
+                feed = feedparser.parse(resp.content)
                 count = 0
                 for entry in feed.entries:
                     if count >= self.max_per_feed:
