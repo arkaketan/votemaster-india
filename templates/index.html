@@ -497,6 +497,91 @@
     border-radius: 10px; overflow: hidden;
   }
   .poll-aggregate .poll-card-hdr { background: #1a1200; border-bottom-color: #78350f; }
+
+  /* ── Mobile Responsive ──────────────────────────────────────────── */
+  @media (max-width: 768px) {
+
+    /* Header: stack title and controls */
+    #header {
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 10px 14px;
+    }
+    #header h1   { font-size: 16px; }
+    #header .sub { font-size: 11px; }
+    #header .ctrl { gap: 8px; }
+    #last-upd { display: none; }
+
+    /* Tab bar: horizontal scroll */
+    #tab-bar { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    #tab-bar::-webkit-scrollbar { display: none; }
+    .tab { padding: 10px 14px; font-size: 13px; }
+
+    /* Countdown strip: smaller tiles */
+    .cdown { min-width: 130px; padding: 8px 12px; }
+    .cdown .num { font-size: 18px; }
+
+    /* Election selector bar */
+    #sel-bar { flex-wrap: wrap; }
+    #election-sel { min-width: 0; max-width: 100%; }
+
+    /* Main layout: single column */
+    #main { grid-template-columns: 1fr; }
+
+    /* Remove side borders between stacked panels */
+    #eci-panel, #map-panel, #poll-panel {
+      border-right: none;
+      border-bottom: 1px solid var(--border);
+    }
+
+    /* News panel: full width below left panel */
+    #news-panel { grid-column: 1; }
+
+    /* Tally: compress — hide "Won" col, keep bar + Lead + Total */
+    .tally-labels { grid-template-columns: 90px 1fr 62px 62px; }
+    .tally-row    { grid-template-columns: 90px 1fr 62px 62px; }
+    .tally-labels > *:nth-child(3),
+    .tally-row    > *:nth-child(3) { display: none; }
+
+    /* Constituency table: horizontal scroll */
+    #const-section { overflow-x: auto; max-height: none; }
+    .const-tbl { min-width: 480px; }
+
+    /* Poll bar rows: narrower party label */
+    .poll-bar-row { grid-template-columns: 100px 1fr 42px 42px; }
+    .poll-party-lbl { font-size: 12px; }
+
+    /* Map: shorter on mobile */
+    #leaflet-map { min-height: 320px; max-height: 55vh; }
+
+    /* News feed: uncap height so it grows naturally */
+    #news-feed { max-height: none; }
+
+    /* Status bar: wrap */
+    #status-bar { flex-wrap: wrap; gap: 6px; padding: 6px 14px; }
+  }
+
+  @media (max-width: 480px) {
+    #header .flag { font-size: 24px; }
+    #header h1    { font-size: 14px; }
+
+    /* Tally: further compress — only party + bar + total */
+    .tally-labels { grid-template-columns: 78px 1fr 58px; }
+    .tally-row    { grid-template-columns: 78px 1fr 58px; }
+    .tally-labels > *:nth-child(4),
+    .tally-row    > *:nth-child(4) { display: none; }
+
+    /* Poll bar: narrower */
+    .poll-bar-row { grid-template-columns: 80px 1fr 40px; }
+    .poll-seats   { display: none; }
+
+    /* Tabs: shorter text via font-size only */
+    .tab { font-size: 12px; padding: 9px 11px; }
+
+    /* Countdown: even more compact */
+    .cdown { min-width: 110px; }
+  }
+
   </style>
 </head>
 <body>
@@ -1648,75 +1733,4 @@ function renderPolls(electionId, polls, aggregate) {
 
 function renderPollCard(poll, isAggregate) {
   const totalSeats = poll.total_seats || poll.seats || 1;
-  const majority   = poll.majority    || Math.ceil(totalSeats / 2);
-  const results    = poll.results     || [];
-  const maxSeats   = Math.max(...results.map(r => r.seats || 0), 1);
-
-  // Type badge text
-  const typeMap = {
-    'pre-poll':  'Pre-Poll Survey',
-    'exit-poll': 'Exit Poll',
-    'tracker':   'Tracker Poll',
-  };
-  const typeText  = isAggregate ? 'Poll of Polls' : (typeMap[poll.type] || poll.type || 'Survey');
-  const typeClass = isAggregate ? 'aggregate' : (poll.type === 'exit-poll' ? 'exit' : '');
-
-  const cardClass = isAggregate ? 'poll-card poll-aggregate' : 'poll-card';
-
-  let html = `
-  <div class="${cardClass}">
-    <div class="poll-card-hdr">
-      <div class="poll-hdr-left">
-        <span class="poll-agency">${poll.agency || poll.label || 'Survey'}</span>
-        ${poll.sponsor ? `<span class="poll-sponsor">Sponsored by ${poll.sponsor}</span>` : ''}
-        ${isAggregate && poll.poll_count
-          ? `<span class="poll-sponsor">${poll.poll_count} surveys averaged</span>` : ''}
-      </div>
-      <div class="poll-hdr-right">
-        ${poll.date ? `<span class="poll-date">${new Date(poll.date).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}</span>` : ''}
-        <span class="poll-type-badge ${typeClass}">${typeText}</span>
-      </div>
-    </div>
-    <div class="poll-chart">`;
-
-  for (const r of results) {
-    const barPct   = Math.round((r.seats / totalSeats) * 100);
-    const lowPct   = r.low  != null ? Math.round((r.low  / totalSeats) * 100) : null;
-    const highPct  = r.high != null ? Math.round((r.high / totalSeats) * 100) : null;
-    const rangeStyle = (lowPct != null && highPct != null)
-      ? `left:${lowPct}%;width:${highPct - lowPct}%`
-      : '';
-    const won = r.seats >= majority;
-
-    html += `
-      <div class="poll-bar-row">
-        <div class="poll-party-lbl" title="${r.party}">${r.label || r.party}</div>
-        <div class="poll-bar-outer">
-          ${rangeStyle ? `<div class="poll-bar-range" style="${rangeStyle}"></div>` : ''}
-          <div class="poll-bar-fill" style="width:${barPct}%;background:${r.colour}${won ? '' : 'cc'}"></div>
-        </div>
-        <div class="poll-seats" style="color:${r.colour}">${r.seats}</div>
-        <div class="poll-pct">${r.pct}%</div>
-      </div>`;
-  }
-
-  html += `</div>`;
-
-  // Majority marker line
-  const majPct = Math.round((majority / totalSeats) * 100);
-  html += `
-    <div class="poll-majority-line">
-      <div class="poll-maj-bar" style="width:${majPct}%"></div>
-      <span>Majority mark: <strong>${majority}</strong> of ${totalSeats} seats</span>
-    </div>`;
-
-  if (poll.note) {
-    html += `<div class="poll-note">📋 ${poll.note}</div>`;
-  }
-
-  html += `</div>`;
-  return html;
-}
-</script>
-</body>
-</html>
+  const majority   = poll.majo
