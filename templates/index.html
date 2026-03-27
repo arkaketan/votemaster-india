@@ -1733,4 +1733,78 @@ function renderPolls(electionId, polls, aggregate) {
 
 function renderPollCard(poll, isAggregate) {
   const totalSeats = poll.total_seats || poll.seats || 1;
-  const majority   = poll.majo
+  const majority   = poll.majority    || Math.ceil(totalSeats / 2);
+  const results    = poll.results     || [];
+  const maxSeats   = Math.max(...results.map(r => r.seats || 0), 1);
+
+  // Type badge text
+  const typeMap = {
+    'pre-poll':  'Pre-Poll Survey',
+    'exit-poll': 'Exit Poll',
+    'tracker':   'Tracker Poll',
+  };
+  const typeText  = isAggregate ? 'Poll of Polls' : (typeMap[poll.type] || poll.type || 'Survey');
+  const typeClass = isAggregate ? 'aggregate' : (poll.type === 'exit-poll' ? 'exit' : '');
+
+  const cardClass = isAggregate ? 'poll-card poll-aggregate' : 'poll-card';
+
+  let html = `
+  <div class="${cardClass}">
+    <div class="poll-card-hdr">
+      <div class="poll-hdr-left">
+        <span class="poll-agency">${poll.agency || poll.label || 'Survey'}</span>
+        ${poll.sponsor ? `<span class="poll-sponsor">Sponsored by ${poll.sponsor}</span>` : ''}
+        ${isAggregate && poll.poll_count
+          ? `<span class="poll-sponsor">${poll.poll_count} surveys averaged</span>` : ''}
+      </div>
+      <div class="poll-hdr-right">
+        ${poll.date ? `<span class="poll-date">${new Date(poll.date).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}</span>` : ''}
+        <span class="poll-type-badge ${typeClass}">${typeText}</span>
+      </div>
+    </div>
+    <div class="poll-chart">`;
+
+  for (const r of results) {
+    const barPct   = Math.round((r.seats / totalSeats) * 100);
+    const lowPct   = r.low  != null ? Math.round((r.low  / totalSeats) * 100) : null;
+    const highPct  = r.high != null ? Math.round((r.high / totalSeats) * 100) : null;
+    const rangeStyle = (lowPct != null && highPct != null)
+      ? `left:${lowPct}%;width:${highPct - lowPct}%`
+      : '';
+    const won = r.seats >= majority;
+
+    html += `
+      <div class="poll-bar-row">
+        <div class="poll-party-lbl" title="${r.party}">${r.label || r.party}</div>
+        <div class="poll-bar-outer">
+          ${rangeStyle ? `<div class="poll-bar-range" style="${rangeStyle}"></div>` : ''}
+          <div class="poll-bar-fill" style="width:${barPct}%;background:${r.colour}${won ? '' : 'cc'}"></div>
+        </div>
+        <div class="poll-seats" style="color:${r.colour}">${r.seats}</div>
+        <div class="poll-pct">${r.pct}%</div>
+      </div>`;
+  }
+
+  html += `</div>`;
+
+  // Majority marker line
+  const majPct = Math.round((majority / totalSeats) * 100);
+  html += `
+    <div class="poll-majority-line">
+      <div class="poll-maj-bar" style="width:${majPct}%"></div>
+      <span>Majority mark: <strong>${majority}</strong> of ${totalSeats} seats</span>
+    </div>`;
+
+  if (poll.note) {
+    html += `<div class="poll-note">📋 ${poll.note}</div>`;
+  }
+
+  html += `</div>`;
+  return html;
+}
+
+// Auto-initialise — script is at bottom of body so DOM is ready
+refreshAll();
+</script>
+</body>
+</html>
