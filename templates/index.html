@@ -1271,8 +1271,13 @@ async function refreshAll() {
   try {
     await fetch('/api/refresh', { method: 'POST' });
 
-    // Load live elections
-    const liveResp = await api('/api/elections');
+    // Load live elections — retry up to 5× if server is still warming up
+    let liveResp;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      liveResp = await api('/api/elections');
+      if ((liveResp.data || []).length > 0) break;
+      await new Promise(r => setTimeout(r, 3000));
+    }
     S.liveElect = liveResp.data || [];
 
     // Load historical elections
