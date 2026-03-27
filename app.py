@@ -506,10 +506,14 @@ def api_status():
         })
 
 
+# ── Startup refresh (runs under both gunicorn and direct execution) ──
+# Kick off background data fetch as soon as the module is imported
+refresh_async()
+logger.info("Startup refresh initiated")
+
 # ── Entry point ──────────────────────────────────────────────────────
 if __name__ == "__main__":
     logger.info("Starting India Election Monitor…")
-    _do_refresh()
     logger.info("Ready — visit http://localhost:5000")
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=False, threaded=True)
