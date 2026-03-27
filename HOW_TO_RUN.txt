@@ -1,0 +1,102 @@
+╔══════════════════════════════════════════════════════════╗
+║       🗳️  India Election Monitor 2026 — Setup Guide       ║
+╚══════════════════════════════════════════════════════════╝
+
+REQUIREMENTS
+  • Python 3.11 or higher
+  • pip (comes with Python)
+  • An internet connection (for live scraping)
+
+─────────────────────────────────────────────────────────
+STEP 1 — Install dependencies (one-time, ~30 seconds)
+─────────────────────────────────────────────────────────
+  Open a terminal, navigate to this folder, then run:
+
+    pip install -r requirements.txt
+
+  This installs: flask, requests, beautifulsoup4, lxml,
+                 feedparser, apscheduler, flask-cors
+
+─────────────────────────────────────────────────────────
+STEP 2 — Start the server
+─────────────────────────────────────────────────────────
+    python app.py
+
+  On first launch the app will pre-load data from ECI and
+  news RSS feeds (takes ~10–15 seconds). You'll see:
+
+    INFO — Data ready — visit http://localhost:5000
+
+─────────────────────────────────────────────────────────
+STEP 3 — Open the dashboard
+─────────────────────────────────────────────────────────
+  Open your browser and go to:  http://localhost:5000
+
+─────────────────────────────────────────────────────────
+WHAT THE DASHBOARD SHOWS
+─────────────────────────────────────────────────────────
+  ┌─ Countdown strip ──────────────────────────────────┐
+  │  Days to poll for Kerala, TN, WB, Assam + Counting │
+  └────────────────────────────────────────────────────┘
+
+  ┌─ LEFT PANEL: ECI Live Results ─────────────────────┐
+  │  • Election selector dropdown (from ECI)           │
+  │  • Party-wise seat tally with colour-coded bars    │
+  │    (Won | Leading | Total)                         │
+  │  • Constituency-wise results table                 │
+  │    (Leading candidate · Party · Margin · Status)   │
+  └────────────────────────────────────────────────────┘
+
+  ┌─ RIGHT PANEL: News Terminal ────────────────────────┐
+  │  • Mini live party tracker (seats won + leading)   │
+  │  • Election headlines from:                        │
+  │      NDTV, Times of India, The Hindu,              │
+  │      Hindustan Times, India TV News, The Quint     │
+  │  • Each article shows source, timestamp, summary   │
+  │  • Click any headline to open the full article     │
+  └────────────────────────────────────────────────────┘
+
+─────────────────────────────────────────────────────────
+DATA & REFRESH BEHAVIOUR
+─────────────────────────────────────────────────────────
+  • Auto-refreshes every 2 minutes
+  • "↻ Refresh" button triggers an immediate refresh
+  • "⚠ Demo Data" badge appears when ECI results haven't
+    started yet (pre-election mode); disappears once
+    live counting data is available on results.eci.gov.in
+  • "● LIVE" badge appears when live data is loaded
+
+─────────────────────────────────────────────────────────
+EY ELECTIONS TRACKED (2026)
+─────────────────────────────────────────────────────────
+  State         Polling Date     Seats   Counting
+  ─────────────────────────────────────────────────
+  Kerala        9 April 2026     140     4 May 2026
+  Tamil Nadu    23 April 2026    234     4 May 2026
+  West Bengal   23 + 29 Apr      294     4 May 2026
+  Assam         April 2026       126     4 May 2026
+  Puducherry    April 2026        30     4 May 2026
+
+─────────────────────────────────────────────────────────
+SOURCE CODE STRUCTURE
+─────────────────────────────────────────────────────────
+  election_dashboard/
+  ├── app.py                  Flask web server + API routes
+  ├── requirements.txt        Python dependencies
+  ├── HOW_TO_RUN.txt          This file
+  ├── scrapers/
+  │   ├── eci_scraper.py      Scrapes results.eci.gov.in
+  │   └── news_scraper.py     Fetches RSS from 9 news outlets
+  └── templates/
+      └── index.html          Dashboard frontend (HTML/CSS/JS)
+
+─────────────────────────────────────────────────────────
+API ENDPOINTS (for developers)
+─────────────────────────────────────────────────────────
+  GET  /                         Dashboard UI
+  GET  /api/elections            List of available elections
+  GET  /api/partywise?idx=0      Party-wise results
+  GET  /api/constituencies?idx=0 Constituency-wise results
+  GET  /api/news                 Latest election news articles
+  POST /api/refresh              Trigger a full data refresh
+  GET  /api/status               Server status + counts
